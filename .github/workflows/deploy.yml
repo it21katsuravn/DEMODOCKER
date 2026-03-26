@@ -1,0 +1,33 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASS }}
+
+      - name: Build Image
+        run: docker build -t yourname/demo-api .
+
+      - name: Push Image
+        run: docker push yourname/demo-api
+
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker pull yourname/demo-api
+            docker stop demo-api || true
+            docker rm demo-api || true
+            docker run -d -p 3000:3000 --name demo-api yourname/demo-api
